@@ -9,10 +9,8 @@ from langchain_core.embeddings import Embeddings
 from huggingface_hub import InferenceClient
 
 
-# =========================================================
-# PAGE CONFIG
-# =========================================================
 
+# PAGE CONFIG
 st.set_page_config(
     page_title="NoteBot",
     page_icon="📚",
@@ -20,18 +18,14 @@ st.set_page_config(
 )
 
 
-# =========================================================
-# TITLE
-# =========================================================
 
+# TITLE
 st.title("📚 NoteBot")
 st.write("Upload your PDF notes and ask questions about them.")
 
 
-# =========================================================
-# HUGGING FACE TOKEN
-# =========================================================
 
+# HUGGING FACE TOKEN
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
 if not HF_TOKEN:
@@ -39,10 +33,8 @@ if not HF_TOKEN:
     st.stop()
 
 
-# =========================================================
-# HUGGING FACE EMBEDDINGS
-# =========================================================
 
+# HUGGING FACE EMBEDDINGS
 class HuggingFaceEmbeddings(Embeddings):
 
     def __init__(self):
@@ -90,10 +82,8 @@ class HuggingFaceEmbeddings(Embeddings):
 embeddings = HuggingFaceEmbeddings()
 
 
-# =========================================================
-# SIDEBAR
-# =========================================================
 
+# SIDEBAR
 with st.sidebar:
 
     st.header("📄 My Notes")
@@ -104,18 +94,15 @@ with st.sidebar:
     )
 
 
-# =========================================================
+
 # PDF PROCESSING
-# =========================================================
 
 if file is not None:
 
     try:
 
-        # -------------------------------------------------
+       
         # READ PDF
-        # -------------------------------------------------
-
         pdf = PdfReader(file)
 
         text = ""
@@ -137,10 +124,8 @@ if file is not None:
             st.stop()
 
 
-        # -------------------------------------------------
-        # SPLIT TEXT
-        # -------------------------------------------------
-
+       # SPLIT TEXT
+        
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=300,
             chunk_overlap=50,
@@ -164,10 +149,8 @@ if file is not None:
         )
 
 
-        # -------------------------------------------------
-        # CREATE FAISS VECTOR STORE
-        # -------------------------------------------------
-
+        
+       # CREATE FAISS VECTOR STORE
         with st.spinner(
             "Creating document embeddings..."
         ):
@@ -183,10 +166,8 @@ if file is not None:
         )
 
 
-        # -------------------------------------------------
+       
         # QUESTION
-        # -------------------------------------------------
-
         user_query = st.text_input(
             "Ask a question about your notes:"
         )
@@ -194,10 +175,7 @@ if file is not None:
 
         if user_query:
 
-            # -------------------------------------------------
             # SEARCH RELEVANT CHUNKS
-            # -------------------------------------------------
-
             with st.spinner(
                 "Searching your notes..."
             ):
@@ -216,10 +194,7 @@ if file is not None:
             )
 
 
-            # -------------------------------------------------
             # HUGGING FACE LLM
-            # -------------------------------------------------
-
             client = InferenceClient(
                 token=HF_TOKEN,
                 provider="auto"
@@ -234,7 +209,7 @@ Answer the user's question using ONLY the provided context.
 
 If the answer cannot be found in the context, say:
 
-"I don't know based on the uploaded notes."
+"I don't know Sneha."
 
 Do not invent information.
 
@@ -248,10 +223,7 @@ Answer:
 """
 
 
-            # -------------------------------------------------
-            # GENERATE ANSWER
-            # -------------------------------------------------
-
+             # GENERATE ANSWER
             try:
 
                 with st.spinner(
@@ -285,10 +257,8 @@ Answer:
                 )
 
 
-                # -------------------------------------------------
+              
                 # DISPLAY ANSWER
-                # -------------------------------------------------
-
                 st.subheader("💡 Answer")
 
                 st.write(output)
