@@ -3,7 +3,5 @@ PyPDF2
 langchain-text-splitters
 langchain-community
 langchain-core
-sentence-transformers
 huggingface-hub
 faiss-cpu
-torch
