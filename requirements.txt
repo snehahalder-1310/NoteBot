@@ -6,3 +6,4 @@ langchain-core
 sentence-transformers
 huggingface-hub
 faiss-cpu
+torch==2.6.0
