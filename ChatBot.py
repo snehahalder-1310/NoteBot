@@ -1,5 +1,6 @@
+import os
 import streamlit as st
-from sentence_transformers import SentenceTransformer
+from huggingface_hub import InferenceClient
 
 st.set_page_config(
     page_title="NoteBot",
@@ -8,36 +9,30 @@ st.set_page_config(
 
 st.title("📚 NoteBot")
 
-st.write("Loading embedding model...")
+HF_TOKEN = os.environ.get("HF_TOKEN")
+
+if not HF_TOKEN:
+    st.error("HF_TOKEN not found")
+    st.stop()
+
+st.success("HF_TOKEN found!")
 
 try:
-
-    model = SentenceTransformer(
-        "sentence-transformers/all-MiniLM-L6-v2"
+    client = InferenceClient(
+        token=HF_TOKEN,
+        provider="auto"
     )
 
-    st.success("Embedding model loaded successfully!")
+    st.write("Testing Hugging Face...")
 
-    text = st.text_input(
-        "Enter some text to test:"
+    result = client.feature_extraction(
+        "This is a test sentence.",
+        model="sentence-transformers/all-MiniLM-L6-v2"
     )
 
-    if text:
+    st.success("Hugging Face embedding API is working!")
 
-        embedding = model.encode(
-            text,
-            convert_to_numpy=True
-        )
-
-        st.success("Embedding generated successfully!")
-
-        st.write(
-            "Embedding size:",
-            len(embedding)
-        )
+    st.write("Embedding generated successfully.")
 
 except Exception as e:
-
-    st.error(
-        f"Embedding model error: {e}"
-    )
+    st.error(f"Hugging Face embedding error: {e}")
