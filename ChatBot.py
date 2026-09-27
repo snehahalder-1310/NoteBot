@@ -1,6 +1,5 @@
-import os
 import streamlit as st
-from PyPDF2 import PdfReader
+from sentence_transformers import SentenceTransformer
 
 st.set_page_config(
     page_title="NoteBot",
@@ -9,40 +8,36 @@ st.set_page_config(
 
 st.title("📚 NoteBot")
 
-HF_TOKEN = os.environ.get("HF_TOKEN")
+st.write("Loading embedding model...")
 
-if HF_TOKEN:
-    st.success("Hugging Face token found!")
-else:
-    st.error("Hugging Face token NOT found!")
+try:
 
-file = st.file_uploader(
-    "Upload your PDF",
-    type=["pdf"]
-)
+    model = SentenceTransformer(
+        "sentence-transformers/all-MiniLM-L6-v2"
+    )
 
-if file is not None:
+    st.success("Embedding model loaded successfully!")
 
-    st.success("PDF uploaded successfully!")
+    text = st.text_input(
+        "Enter some text to test:"
+    )
 
-    try:
-        pdf = PdfReader(file)
+    if text:
 
-        st.write("Number of pages:", len(pdf.pages))
+        embedding = model.encode(
+            text,
+            convert_to_numpy=True
+        )
 
-        text = ""
+        st.success("Embedding generated successfully!")
 
-        for page in pdf.pages:
-            page_text = page.extract_text()
+        st.write(
+            "Embedding size:",
+            len(embedding)
+        )
 
-            if page_text:
-                text += page_text
+except Exception as e:
 
-        if text.strip():
-            st.success("PDF text extracted successfully!")
-            st.write(text[:1000])
-        else:
-            st.warning("No readable text found in this PDF.")
-
-    except Exception as e:
-        st.error(f"PDF error: {e}")
+    st.error(
+        f"Embedding model error: {e}"
+    )
