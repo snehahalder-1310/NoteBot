@@ -25,9 +25,13 @@ st.header("NoteBot")
 
 
 # HUGGING FACE EMBEDDING MODEL
-embedding_model = SentenceTransformer(
-    "sentence-transformers/all-MiniLM-L6-v2"
-)
+@st.cache_resource
+def load_embedding_model():
+    return SentenceTransformer(
+        "sentence-transformers/all-MiniLM-L6-v2"
+    )
+
+embedding_model = load_embedding_model()
 
 
 class HuggingFaceEmbeddings(Embeddings):
