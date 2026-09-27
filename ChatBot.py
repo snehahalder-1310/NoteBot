@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 
 st.set_page_config(
@@ -7,18 +8,11 @@ st.set_page_config(
 
 st.title("📚 NoteBot")
 
-st.success("Streamlit interface is working!")
+HF_TOKEN = os.environ.get("HF_TOKEN")
 
-st.write("If you can see this page, Render and Streamlit are working correctly.")
+if HF_TOKEN:
+    st.success("Hugging Face token found!")
+else:
+    st.error("Hugging Face token NOT found!")
 
-st.header("Test Section")
-
-name = st.text_input("Enter your name")
-
-if name:
-    st.write(f"Hello, {name}!")
-
-st.file_uploader(
-    "Upload a PDF",
-    type=["pdf"]
-)
+st.write("Application is running successfully.")
