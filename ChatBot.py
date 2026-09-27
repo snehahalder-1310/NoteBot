@@ -2,6 +2,8 @@ import os
 import streamlit as st
 from PyPDF2 import PdfReader
 
+st.write("NoteBot is starting...")
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.embeddings import Embeddings
