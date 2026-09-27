@@ -2,8 +2,6 @@ import os
 import streamlit as st
 from PyPDF2 import PdfReader
 
-st.write("NoteBot is starting...")
-
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.embeddings import Embeddings
@@ -12,7 +10,21 @@ from sentence_transformers import SentenceTransformer
 from huggingface_hub import InferenceClient
 
 
+# =========================================================
+# PAGE CONFIGURATION
+# =========================================================
+
+st.set_page_config(
+    page_title="NoteBot",
+    page_icon="📚",
+    layout="wide"
+)
+
+
+# =========================================================
 # HUGGING FACE TOKEN
+# =========================================================
+
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
 if not HF_TOKEN:
@@ -20,137 +32,207 @@ if not HF_TOKEN:
     st.stop()
 
 
+# =========================================================
+# TITLE
+# =========================================================
 
-# PAGE TITLE
-st.header("NoteBot")
+st.title("📚 NoteBot")
+st.write("Upload your PDF notes and ask questions about them.")
 
 
+# =========================================================
+# LOAD EMBEDDING MODEL ONLY WHEN NEEDED
+# =========================================================
 
-# HUGGING FACE EMBEDDING MODEL
 @st.cache_resource
 def load_embedding_model():
+
     return SentenceTransformer(
         "sentence-transformers/all-MiniLM-L6-v2"
     )
 
-embedding_model = load_embedding_model()
 
+# =========================================================
+# CUSTOM HUGGING FACE EMBEDDINGS
+# =========================================================
 
 class HuggingFaceEmbeddings(Embeddings):
 
     def embed_documents(self, texts):
 
-        embeddings = embedding_model.encode(
+        model = load_embedding_model()
+
+        embeddings = model.encode(
             texts,
             convert_to_numpy=True
         )
 
         return embeddings.tolist()
 
+
     def embed_query(self, text):
 
-        embedding = embedding_model.encode(
+        model = load_embedding_model()
+
+        embedding = model.encode(
             text,
             convert_to_numpy=True
         )
 
         return embedding.tolist()
 
+
 embeddings = HuggingFaceEmbeddings()
 
 
-
+# =========================================================
 # SIDEBAR
+# =========================================================
+
 with st.sidebar:
 
-    st.title("My Notes")
+    st.header("My Notes")
 
     file = st.file_uploader(
-        "Upload notes PDF and start asking questions",
-        type="pdf"
+        "Upload your PDF",
+        type=["pdf"]
     )
 
 
-
+# =========================================================
 # PDF PROCESSING
+# =========================================================
+
 if file is not None:
-    my_pdf = PdfReader(file)    # READ PDF
-    text = ""
 
-    for page in my_pdf.pages:
+    # -----------------------------------------------------
+    # READ PDF
+    # -----------------------------------------------------
 
-        page_text = page.extract_text()
+    try:
 
-        if page_text:
-            text += page_text
+        my_pdf = PdfReader(file)
 
+        text = ""
 
+        for page in my_pdf.pages:
 
-    # SPLIT TEXT INTO CHUNKS
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=300,
-        chunk_overlap=50,
-        length_function=len
-    )
+            page_text = page.extract_text()
 
-    chunks = splitter.split_text(text)
+            if page_text:
+                text += page_text
 
 
-    # CREATE FAISS VECTOR DATABASE
-    vector_store = FAISS.from_texts(
-        chunks,
-        embeddings
-    )
+        # -------------------------------------------------
+        # CHECK PDF TEXT
+        # -------------------------------------------------
+
+        if not text.strip():
+
+            st.error(
+                "No readable text was found in this PDF."
+            )
+
+            st.stop()
 
 
-    st.success("PDF uploaded successfully!")
+        # -------------------------------------------------
+        # SPLIT TEXT INTO CHUNKS
+        # -------------------------------------------------
+
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=300,
+            chunk_overlap=50,
+            length_function=len
+        )
+
+        chunks = splitter.split_text(text)
 
 
+        if not chunks:
 
-    # USER QUERY
-    user_query = st.text_input(
-        "Type your query here"
-    )
+            st.error(
+                "Could not create text chunks from the PDF."
+            )
+
+            st.stop()
 
 
-    if user_query:
+        # -------------------------------------------------
+        # CREATE FAISS VECTOR DATABASE
+        # -------------------------------------------------
+
+        with st.spinner(
+            "Processing your PDF..."
+        ):
+
+            vector_store = FAISS.from_texts(
+                chunks,
+                embeddings
+            )
 
 
-        # SEMANTIC SEARCH
-        matching_chunks = vector_store.similarity_search(
-            user_query,
-            k=3
+        st.success(
+            "PDF uploaded successfully!"
         )
 
 
+        # =================================================
+        # QUESTION INPUT
+        # =================================================
 
-        # CREATE CONTEXT
-
-        context = "\n\n".join(
-            document.page_content
-            for document in matching_chunks
+        user_query = st.text_input(
+            "Ask a question about your notes:"
         )
 
 
+        if user_query:
 
-        # HUGGING FACE LLM
+            # ---------------------------------------------
+            # SEMANTIC SEARCH
+            # ---------------------------------------------
 
-        client = InferenceClient(
-            token=HF_TOKEN,
-            provider="auto"
-        )
+            with st.spinner(
+                "Searching your notes..."
+            ):
+
+                matching_chunks = vector_store.similarity_search(
+                    user_query,
+                    k=3
+                )
 
 
+            # ---------------------------------------------
+            # CREATE CONTEXT
+            # ---------------------------------------------
 
-        # PROMPT
+            context = "\n\n".join(
+                document.page_content
+                for document in matching_chunks
+            )
 
-        prompt = f"""
+
+            # ---------------------------------------------
+            # HUGGING FACE CLIENT
+            # ---------------------------------------------
+
+            client = InferenceClient(
+                token=HF_TOKEN,
+                provider="auto"
+            )
+
+
+            # ---------------------------------------------
+            # PROMPT
+            # ---------------------------------------------
+
+            prompt = f"""
 You are my assistant tutor.
 
 Answer the question based only on the following context.
 
 If the answer cannot be found in the context, simply say:
-"I don't know Sneha."
+"I don't know."
 
 Context:
 {context}
@@ -162,41 +244,63 @@ Answer:
 """
 
 
+            # ---------------------------------------------
+            # GENERATE RESPONSE
+            # ---------------------------------------------
 
-        # GENERATE RESPONSE
+            try:
 
-        try:
+                with st.spinner(
+                    "Generating answer..."
+                ):
 
-            response = client.chat.completions.create(
+                    response = client.chat.completions.create(
 
-                model="openai/gpt-oss-120b",
+                        model="openai/gpt-oss-120b",
 
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
 
-                max_tokens=300,
-                temperature=0.2
-            )
+                        max_tokens=300,
 
-
-            # GET RESPONSE TEXT
-
-            output = response.choices[0].message.content
-
-
-
-            # DISPLAY RESPONSE
-
-            st.subheader("Answer")
-            st.write(output)
+                        temperature=0.2
+                    )
 
 
-        except Exception as e:
+                # -----------------------------------------
+                # GET RESPONSE
+                # -----------------------------------------
 
-            st.error(
-                f"Error while generating response: {e}"
-            )
+                output = (
+                    response
+                    .choices[0]
+                    .message
+                    .content
+                )
+
+
+                # -----------------------------------------
+                # DISPLAY RESPONSE
+                # -----------------------------------------
+
+                st.subheader("Answer")
+
+                st.write(output)
+
+
+            except Exception as e:
+
+                st.error(
+                    f"Error while generating response: {e}"
+                )
+
+
+    except Exception as e:
+
+        st.error(
+            f"Error while processing the PDF: {e}"
+        )
