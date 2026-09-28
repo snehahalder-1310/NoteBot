@@ -276,3 +276,31 @@ Answer:
         st.error(
             f"Error while processing PDF: {e}"
         )
+
+
+# =========================================================
+# FOOTER
+# =========================================================
+
+st.markdown(
+    """
+    <style>
+    .footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        padding: 8px;
+        font-size: 14px;
+        color: #888;
+        background-color: transparent;
+    }
+    </style>
+
+    <div class="footer">
+        © 2026 Sneha Halder | NoteBot
+    </div>
+    """,
+    unsafe_allow_html=True
+)
